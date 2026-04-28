@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37111.16
@@ -8,8 +8,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketAPI.DAL", "TicketAPI.DAL\TicketAPI.DAL.csproj", "{4E5E1483-CD57-4EB6-A346-2A36250FF642}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketAPI.Core", "TicketAPI.CORE\TicketAPI.Core.csproj", "{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketAPI.DAL.DependencyInjection", "TicketAPI.DAL.DependencyInjection\TicketAPI.DAL.DependencyInjection.csproj", "{75F19CB0-1806-4DA5-BB39-BC57381069DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,12 +26,7 @@ Global
 		{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{75F19CB0-1806-4DA5-BB39-BC57381069DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{75F19CB0-1806-4DA5-BB39-BC57381069DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{75F19CB0-1806-4DA5-BB39-BC57381069DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{75F19CB0-1806-4DA5-BB39-BC57381069DF}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
+		{ADE4A664-CEDA-4995-9A03-72E5ACBF18B9}.Release|Any CPU.Build.0 = Release|Any CPU	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection

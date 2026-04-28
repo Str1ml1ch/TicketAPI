@@ -1,5 +1,5 @@
 ﻿using TicketAPI.Core.Models;
-using TicketAPI.DAL.Storage.Filters;
+using TicketAPI.DAL.Specifications.ScannerEvents;
 using Microsoft.EntityFrameworkCore;
 using Homework.Ticketing.System.Shared.Models;
 
@@ -21,9 +21,11 @@ namespace TicketAPI.DAL.Storage.GetScannerEvents
             Guid? eventId,
             CancellationToken ct)
         {
-            var query = _context.ScannerEvents
-                .FilterByScannerId(scannerId)
-                .FilterByEventId(eventId);
+            var query = _context.ScannerEvents.AsQueryable();
+            if (scannerId.HasValue)
+                query = query.Where(new ScannerEventByScannerIdSpecification(scannerId.Value).ToExpression());
+            if (eventId.HasValue)
+                query = query.Where(new ScannerEventByEventIdSpecification(eventId.Value).ToExpression());
 
             var totalCount = await query.CountAsync(ct);
 

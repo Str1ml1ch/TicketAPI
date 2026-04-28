@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TicketAPI.DAL.Storage.CreateScanner;
 using TicketAPI.DAL.Storage.CreateScannerEvent;
@@ -16,13 +16,12 @@ using TicketAPI.DAL.Storage.RemoveTicket;
 using TicketAPI.DAL.Storage.UpdateScanner;
 using TicketAPI.DAL.Storage.UpdateTicket;
 
-namespace TicketAPI.DAL.DependencyInjection
+namespace TicketAPI.DAL
 {
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddStorage(this IServiceCollection services, string connectionString)
         {
-
             return services.AddDbContextPool<TicketDbContext>(options =>
             {
                 options.UseSqlServer(connectionString);

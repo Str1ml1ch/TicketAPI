@@ -1,7 +1,7 @@
 ﻿using Homework.Ticketing.System.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using TicketAPI.Core.Models;
-using TicketAPI.DAL.Storage.Filters;
+using TicketAPI.DAL.Specifications.TicketValidations;
 
 namespace TicketAPI.DAL.Storage.GetTicketValidations
 {
@@ -21,9 +21,11 @@ namespace TicketAPI.DAL.Storage.GetTicketValidations
             Guid? scannerId,
             CancellationToken ct)
         {
-            var query = _context.TicketValidations
-                .FilterByTicketId(ticketId)
-                .FilterByScannerId(scannerId);
+            var query = _context.TicketValidations.AsQueryable();
+            if (ticketId.HasValue)
+                query = query.Where(new TicketValidationByTicketIdSpecification(ticketId.Value).ToExpression());
+            if (scannerId.HasValue)
+                query = query.Where(new TicketValidationByScannerIdSpecification(scannerId.Value).ToExpression());
 
             var totalCount = await query.CountAsync(ct);
 

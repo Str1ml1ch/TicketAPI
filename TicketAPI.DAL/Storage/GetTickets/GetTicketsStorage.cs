@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TicketAPI.Core.Enums;
 using TicketAPI.Core.Models;
-using TicketAPI.DAL.Storage.Filters;
+using TicketAPI.DAL.Specifications.Tickets;
 
 namespace TicketAPI.DAL.Storage.GetTickets
 {
@@ -24,11 +24,15 @@ namespace TicketAPI.DAL.Storage.GetTickets
             ETicketStatus? status,
             CancellationToken ct)
         {
-            var query = _context.Tickets
-                .FilterByEventId(eventId)
-                .FilterByOrderItemId(orderItemId)
-                .FilterBySeatId(seatId)
-                .FilterByStatus(status);
+            var query = _context.Tickets.AsQueryable();
+            if (eventId.HasValue)
+                query = query.Where(new TicketByEventIdSpecification(eventId.Value).ToExpression());
+            if (orderItemId.HasValue)
+                query = query.Where(new TicketByOrderItemIdSpecification(orderItemId.Value).ToExpression());
+            if (seatId.HasValue)
+                query = query.Where(new TicketBySeatIdSpecification(seatId.Value).ToExpression());
+            if (status.HasValue)
+                query = query.Where(new TicketByStatusSpecification(status.Value).ToExpression());
 
             var totalCount = await query.CountAsync(ct);
 
