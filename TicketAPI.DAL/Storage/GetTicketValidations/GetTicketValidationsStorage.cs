@@ -1,6 +1,7 @@
-﻿using Homework.Ticketing.System.Shared.Models;
+using TicketAPI.Domain.Storage.GetTicketValidations;
+using Homework.Ticketing.System.Shared.Models;
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Core.Models;
+using TicketAPI.Domain.Models;
 using TicketAPI.DAL.Specifications.TicketValidations;
 
 namespace TicketAPI.DAL.Storage.GetTicketValidations

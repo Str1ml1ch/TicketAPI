@@ -1,3 +1,4 @@
+using TicketAPI.Domain.Storage.RemoveScanner;
 using Microsoft.EntityFrameworkCore;
 
 namespace TicketAPI.DAL.Storage.RemoveScanner

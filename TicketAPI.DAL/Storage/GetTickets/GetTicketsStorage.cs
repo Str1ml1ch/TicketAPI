@@ -1,7 +1,8 @@
-﻿using Homework.Ticketing.System.Shared.Models;
+using TicketAPI.Domain.Storage.GetTickets;
+using Homework.Ticketing.System.Shared.Models;
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Core.Enums;
-using TicketAPI.Core.Models;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Domain.Models;
 using TicketAPI.DAL.Specifications.Tickets;
 
 namespace TicketAPI.DAL.Storage.GetTickets

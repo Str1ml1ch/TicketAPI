@@ -1,3 +1,4 @@
+using TicketAPI.Domain.Storage.CreateTicketValidation;
 using TicketAPI.DAL.Entities;
 
 namespace TicketAPI.DAL.Storage.CreateTicketValidation

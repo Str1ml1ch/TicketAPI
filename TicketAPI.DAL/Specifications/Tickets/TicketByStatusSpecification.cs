@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using TicketAPI.Core.Enums;
+using TicketAPI.Domain.Enums;
 using TicketAPI.DAL.Entities;
 
 namespace TicketAPI.DAL.Specifications.Tickets

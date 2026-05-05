@@ -1,3 +1,4 @@
+using TicketAPI.Domain.Storage.RemoveTicket;
 using Microsoft.EntityFrameworkCore;
 
 namespace TicketAPI.DAL.Storage.RemoveTicket

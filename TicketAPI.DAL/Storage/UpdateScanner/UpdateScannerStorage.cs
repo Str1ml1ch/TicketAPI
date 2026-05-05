@@ -1,4 +1,5 @@
-﻿using TicketAPI.Core.Enums;
+using TicketAPI.Domain.Storage.UpdateScanner;
+using TicketAPI.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace TicketAPI.DAL.Storage.UpdateScanner

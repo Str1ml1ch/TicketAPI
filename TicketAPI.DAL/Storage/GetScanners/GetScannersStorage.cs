@@ -1,7 +1,8 @@
-﻿using Homework.Ticketing.System.Shared.Models;
+using TicketAPI.Domain.Storage.GetScanners;
+using Homework.Ticketing.System.Shared.Models;
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Core.Enums;
-using TicketAPI.Core.Models;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Domain.Models;
 using TicketAPI.DAL.Storage.Filters;
 
 namespace TicketAPI.DAL.Storage.GetScanners

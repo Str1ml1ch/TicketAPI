@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TicketAPI.DAL;
+using TicketAPI.Domain.UseCases.GetTickets;
+using TicketAPI.Middleware;
 
 namespace TicketAPI
 {
@@ -18,6 +20,12 @@ namespace TicketAPI
 
             builder.Services.AddStorage(builder.Configuration.GetConnectionString("DefaultConnection")!)
                 .AddServices();
+
+            builder.Services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssemblyContaining<Program>();
+                cfg.RegisterServicesFromAssemblyContaining<GetTicketsRequestHandler>();
+            });
 
             builder.Services.AddAuthentication(options =>
             {
@@ -48,6 +56,8 @@ namespace TicketAPI
             }
 
             app.UseHttpsRedirection();
+
+            app.UseMiddleware<ExceptionHandlerMiddleware>();
 
             app.UseAuthentication();
             app.UseAuthorization();

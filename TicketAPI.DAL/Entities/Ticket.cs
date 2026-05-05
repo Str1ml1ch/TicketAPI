@@ -1,5 +1,5 @@
-﻿using Shared.DAL.Entities;
-using TicketAPI.Core.Enums;
+using Shared.DAL.Entities;
+using TicketAPI.Domain.Enums;
 
 namespace TicketAPI.DAL.Entities
 {

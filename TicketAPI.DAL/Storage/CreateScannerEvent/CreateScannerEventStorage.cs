@@ -1,3 +1,4 @@
+using TicketAPI.Domain.Storage.CreateScannerEvent;
 using TicketAPI.DAL.Entities;
 
 namespace TicketAPI.DAL.Storage.CreateScannerEvent

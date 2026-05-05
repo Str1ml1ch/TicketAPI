@@ -16,11 +16,13 @@
 		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 	</PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\TicketAPI.DAL\TicketAPI.DAL.csproj" />
+    <ProjectReference Include="..\TicketAPI.Domain\TicketAPI.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TicketAPI.Core.Models;
+using TicketAPI.Domain.Storage.GetTicketById;
+using Microsoft.EntityFrameworkCore;
+using TicketAPI.Domain.Models;
 
 namespace TicketAPI.DAL.Storage.GetTicketById
 {

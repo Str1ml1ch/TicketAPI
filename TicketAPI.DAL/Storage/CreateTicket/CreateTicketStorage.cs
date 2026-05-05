@@ -1,5 +1,6 @@
-﻿using TicketAPI.DAL.Entities;
-using TicketAPI.Core.Enums;
+using TicketAPI.Domain.Storage.CreateTicket;
+using TicketAPI.DAL.Entities;
+using TicketAPI.Domain.Enums;
 
 namespace TicketAPI.DAL.Storage.CreateTicket
 {

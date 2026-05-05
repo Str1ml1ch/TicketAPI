@@ -1,4 +1,5 @@
-﻿using TicketAPI.Core.Models;
+using TicketAPI.Domain.Storage.GetScannerEvents;
+using TicketAPI.Domain.Models;
 using TicketAPI.DAL.Specifications.ScannerEvents;
 using Microsoft.EntityFrameworkCore;
 using Homework.Ticketing.System.Shared.Models;
