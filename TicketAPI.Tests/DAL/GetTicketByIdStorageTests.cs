@@ -1,22 +1,38 @@
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Domain.Enums;
+using Microsoft.EntityFrameworkCore.Storage;
 using TicketAPI.DAL;
 using TicketAPI.DAL.Entities;
 using TicketAPI.DAL.Storage.GetTicketById;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Tests.DAL.Infrastructure;
 
 namespace TicketAPI.Tests.DAL;
 
-public class GetTicketByIdStorageTests
+[Collection("SqlServer")]
+public class GetTicketByIdStorageTests : IAsyncLifetime
 {
-    private static TicketDbContext CreateContext()
+    private readonly SqlServerContainerFixture _fixture;
+    private TicketDbContext _context = null!;
+    private IDbContextTransaction _transaction = null!;
+
+    public GetTicketByIdStorageTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+
+    public async Task InitializeAsync()
     {
-        var options = new DbContextOptionsBuilder<TicketDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        return new TicketDbContext(options);
+        _context = new TicketDbContext(
+            new DbContextOptionsBuilder<TicketDbContext>()
+                .UseSqlServer(_fixture.ConnectionString)
+                .Options);
+        _transaction = await _context.Database.BeginTransactionAsync();
     }
 
-    private static Ticket Seed(TicketDbContext ctx, string qrCode = "QR-1", ETicketStatus status = ETicketStatus.Unused)
+    public async Task DisposeAsync()
+    {
+        await _transaction.RollbackAsync();
+        await _context.DisposeAsync();
+    }
+
+    private Ticket Seed(string qrCode = "QR-1", ETicketStatus status = ETicketStatus.Unused)
     {
         var t = new Ticket
         {
@@ -29,16 +45,15 @@ public class GetTicketByIdStorageTests
             Status = status,
             CreatedAt = DateTimeOffset.UtcNow
         };
-        ctx.Tickets.Add(t);
-        ctx.SaveChanges();
+        _context.Tickets.Add(t);
+        _context.SaveChanges();
         return t;
     }
 
     [Fact]
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
-        using var ctx = CreateContext();
-        var storage = new GetTicketByIdStorage(ctx);
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.GetByIdAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -48,9 +63,8 @@ public class GetTicketByIdStorageTests
     [Fact]
     public async Task GetByIdAsync_ReturnsDetailModel_WhenFound()
     {
-        using var ctx = CreateContext();
-        var ticket = Seed(ctx, "QR-TEST");
-        var storage = new GetTicketByIdStorage(ctx);
+        var ticket = Seed("QR-TEST");
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.GetByIdAsync(ticket.Id, CancellationToken.None);
 
@@ -63,8 +77,7 @@ public class GetTicketByIdStorageTests
     [Fact]
     public async Task GetByQrCodeAsync_ReturnsNull_WhenNotFound()
     {
-        using var ctx = CreateContext();
-        var storage = new GetTicketByIdStorage(ctx);
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.GetByQrCodeAsync("NONEXISTENT", CancellationToken.None);
 
@@ -74,9 +87,8 @@ public class GetTicketByIdStorageTests
     [Fact]
     public async Task GetByQrCodeAsync_ReturnsModel_WhenFound()
     {
-        using var ctx = CreateContext();
-        Seed(ctx, "QR-ABC");
-        var storage = new GetTicketByIdStorage(ctx);
+        Seed("QR-ABC");
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.GetByQrCodeAsync("QR-ABC", CancellationToken.None);
 
@@ -87,8 +99,7 @@ public class GetTicketByIdStorageTests
     [Fact]
     public async Task IsExistsAsync_ReturnsFalse_WhenNotFound()
     {
-        using var ctx = CreateContext();
-        var storage = new GetTicketByIdStorage(ctx);
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.IsExistsAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -98,9 +109,8 @@ public class GetTicketByIdStorageTests
     [Fact]
     public async Task IsExistsAsync_ReturnsTrue_WhenFound()
     {
-        using var ctx = CreateContext();
-        var ticket = Seed(ctx);
-        var storage = new GetTicketByIdStorage(ctx);
+        var ticket = Seed();
+        var storage = new GetTicketByIdStorage(_context);
 
         var result = await storage.IsExistsAsync(ticket.Id, CancellationToken.None);
 

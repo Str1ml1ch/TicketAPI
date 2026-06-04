@@ -1,36 +1,52 @@
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Domain.Enums;
+using Microsoft.EntityFrameworkCore.Storage;
 using TicketAPI.DAL;
 using TicketAPI.DAL.Entities;
 using TicketAPI.DAL.Storage.CreateScannerEvent;
 using TicketAPI.DAL.Storage.GetScannerEvents;
 using TicketAPI.DAL.Storage.RemoveScannerEvent;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Tests.DAL.Infrastructure;
 
 namespace TicketAPI.Tests.DAL;
 
-public class ScannerEventStorageTests
+[Collection("SqlServer")]
+public class ScannerEventStorageTests : IAsyncLifetime
 {
-    private static TicketDbContext CreateContext()
+    private readonly SqlServerContainerFixture _fixture;
+    private TicketDbContext _context = null!;
+    private IDbContextTransaction _transaction = null!;
+
+    public ScannerEventStorageTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+
+    public async Task InitializeAsync()
     {
-        var options = new DbContextOptionsBuilder<TicketDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        return new TicketDbContext(options);
+        _context = new TicketDbContext(
+            new DbContextOptionsBuilder<TicketDbContext>()
+                .UseSqlServer(_fixture.ConnectionString)
+                .Options);
+        _transaction = await _context.Database.BeginTransactionAsync();
     }
 
-    private static Scanner SeedScanner(TicketDbContext ctx, string serial = "SN-X")
+    public async Task DisposeAsync()
+    {
+        await _transaction.RollbackAsync();
+        await _context.DisposeAsync();
+    }
+
+    private Scanner SeedScanner(string serial = "SN-X")
     {
         var s = new Scanner { Id = Guid.NewGuid(), SerialNumber = serial, Status = EScannerStatus.Active, CreatedAt = DateTimeOffset.UtcNow };
-        ctx.Scanners.Add(s);
-        ctx.SaveChanges();
+        _context.Scanners.Add(s);
+        _context.SaveChanges();
         return s;
     }
 
-    private static ScannerEvent SeedEvent(TicketDbContext ctx, Guid scannerId, Guid? eventId = null)
+    private ScannerEvent SeedEvent(Guid scannerId, Guid? eventId = null)
     {
         var se = new ScannerEvent { Id = Guid.NewGuid(), ScannerId = scannerId, EventId = eventId ?? Guid.NewGuid(), CreatedAt = DateTimeOffset.UtcNow };
-        ctx.ScannerEvents.Add(se);
-        ctx.SaveChanges();
+        _context.ScannerEvents.Add(se);
+        _context.SaveChanges();
         return se;
     }
 
@@ -39,15 +55,14 @@ public class ScannerEventStorageTests
     [Fact]
     public async Task CreateAsync_PersistsScannerEvent_AndReturnsNewId()
     {
-        using var ctx = CreateContext();
-        var scanner = SeedScanner(ctx);
-        var storage = new CreateScannerEventStorage(ctx);
+        var scanner = SeedScanner();
+        var storage = new CreateScannerEventStorage(_context);
         var eventId = Guid.NewGuid();
 
         var id = await storage.CreateAsync(scanner.Id, eventId, CancellationToken.None);
 
         Assert.NotEqual(Guid.Empty, id);
-        var se = ctx.ScannerEvents.Single(e => e.Id == id);
+        var se = _context.ScannerEvents.Single(e => e.Id == id);
         Assert.Equal(scanner.Id, se.ScannerId);
         Assert.Equal(eventId, se.EventId);
     }
@@ -57,13 +72,12 @@ public class ScannerEventStorageTests
     [Fact]
     public async Task GetAsync_FiltersByScannerId()
     {
-        using var ctx = CreateContext();
-        var scanner1 = SeedScanner(ctx, "SN-1");
-        var scanner2 = SeedScanner(ctx, "SN-2");
-        SeedEvent(ctx, scanner1.Id);
-        SeedEvent(ctx, scanner1.Id);
-        SeedEvent(ctx, scanner2.Id);
-        var storage = new GetScannerEventsStorage(ctx);
+        var scanner1 = SeedScanner("SN-1");
+        var scanner2 = SeedScanner("SN-2");
+        SeedEvent(scanner1.Id);
+        SeedEvent(scanner1.Id);
+        SeedEvent(scanner2.Id);
+        var storage = new GetScannerEventsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, scanner1.Id, null, CancellationToken.None);
 
@@ -74,12 +88,11 @@ public class ScannerEventStorageTests
     [Fact]
     public async Task GetAsync_FiltersByEventId()
     {
-        using var ctx = CreateContext();
-        var scanner = SeedScanner(ctx);
+        var scanner = SeedScanner();
         var eventId = Guid.NewGuid();
-        SeedEvent(ctx, scanner.Id, eventId);
-        SeedEvent(ctx, scanner.Id);
-        var storage = new GetScannerEventsStorage(ctx);
+        SeedEvent(scanner.Id, eventId);
+        SeedEvent(scanner.Id);
+        var storage = new GetScannerEventsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, eventId, CancellationToken.None);
 
@@ -90,10 +103,9 @@ public class ScannerEventStorageTests
     [Fact]
     public async Task GetAsync_PaginatesCorrectly()
     {
-        using var ctx = CreateContext();
-        var scanner = SeedScanner(ctx);
-        for (int i = 0; i < 5; i++) SeedEvent(ctx, scanner.Id);
-        var storage = new GetScannerEventsStorage(ctx);
+        var scanner = SeedScanner();
+        for (int i = 0; i < 5; i++) SeedEvent(scanner.Id);
+        var storage = new GetScannerEventsStorage(_context);
 
         var result = await storage.GetAsync(1, 3, scanner.Id, null, CancellationToken.None);
 
@@ -106,30 +118,28 @@ public class ScannerEventStorageTests
     [Fact]
     public async Task RemoveByIdAsync_RemovesSingleEvent()
     {
-        using var ctx = CreateContext();
-        var scanner = SeedScanner(ctx);
-        var se = SeedEvent(ctx, scanner.Id);
-        var storage = new RemoveScannerEventStorage(ctx);
+        var scanner = SeedScanner();
+        var se = SeedEvent(scanner.Id);
+        var storage = new RemoveScannerEventStorage(_context);
 
         await storage.RemoveByIdAsync(se.Id, CancellationToken.None);
 
-        Assert.False(ctx.ScannerEvents.Any(e => e.Id == se.Id));
+        Assert.False(_context.ScannerEvents.Any(e => e.Id == se.Id));
     }
 
     [Fact]
     public async Task RemoveAllByScannerIdAsync_RemovesAllEventsForScanner()
     {
-        using var ctx = CreateContext();
-        var scanner1 = SeedScanner(ctx, "SN-A");
-        var scanner2 = SeedScanner(ctx, "SN-B");
-        SeedEvent(ctx, scanner1.Id);
-        SeedEvent(ctx, scanner1.Id);
-        SeedEvent(ctx, scanner2.Id);
-        var storage = new RemoveScannerEventStorage(ctx);
+        var scanner1 = SeedScanner("SN-A");
+        var scanner2 = SeedScanner("SN-B");
+        SeedEvent(scanner1.Id);
+        SeedEvent(scanner1.Id);
+        SeedEvent(scanner2.Id);
+        var storage = new RemoveScannerEventStorage(_context);
 
         await storage.RemoveAllByScannerIdAsync(scanner1.Id, CancellationToken.None);
 
-        Assert.Empty(ctx.ScannerEvents.Where(e => e.ScannerId == scanner1.Id));
-        Assert.Single(ctx.ScannerEvents.Where(e => e.ScannerId == scanner2.Id));
+        Assert.Empty(_context.ScannerEvents.Where(e => e.ScannerId == scanner1.Id));
+        Assert.Single(_context.ScannerEvents.Where(e => e.ScannerId == scanner2.Id));
     }
 }

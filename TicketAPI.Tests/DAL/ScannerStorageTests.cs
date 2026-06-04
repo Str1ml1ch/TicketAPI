@@ -1,25 +1,41 @@
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Domain.Enums;
+using Microsoft.EntityFrameworkCore.Storage;
 using TicketAPI.DAL;
+using TicketAPI.DAL.Entities;
 using TicketAPI.DAL.Storage.CreateScanner;
 using TicketAPI.DAL.Storage.GetScannerById;
 using TicketAPI.DAL.Storage.GetScanners;
 using TicketAPI.DAL.Storage.UpdateScanner;
-using TicketAPI.DAL.Entities;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Tests.DAL.Infrastructure;
 
 namespace TicketAPI.Tests.DAL;
 
-public class ScannerStorageTests
+[Collection("SqlServer")]
+public class ScannerStorageTests : IAsyncLifetime
 {
-    private static TicketDbContext CreateContext()
+    private readonly SqlServerContainerFixture _fixture;
+    private TicketDbContext _context = null!;
+    private IDbContextTransaction _transaction = null!;
+
+    public ScannerStorageTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+
+    public async Task InitializeAsync()
     {
-        var options = new DbContextOptionsBuilder<TicketDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        return new TicketDbContext(options);
+        _context = new TicketDbContext(
+            new DbContextOptionsBuilder<TicketDbContext>()
+                .UseSqlServer(_fixture.ConnectionString)
+                .Options);
+        _transaction = await _context.Database.BeginTransactionAsync();
     }
 
-    private static Scanner Seed(TicketDbContext ctx, string serial = "SN-001", EScannerStatus status = EScannerStatus.Active)
+    public async Task DisposeAsync()
+    {
+        await _transaction.RollbackAsync();
+        await _context.DisposeAsync();
+    }
+
+    private Scanner Seed(string serial = "SN-001", EScannerStatus status = EScannerStatus.Active)
     {
         var s = new Scanner
         {
@@ -28,8 +44,8 @@ public class ScannerStorageTests
             Status = status,
             CreatedAt = DateTimeOffset.UtcNow
         };
-        ctx.Scanners.Add(s);
-        ctx.SaveChanges();
+        _context.Scanners.Add(s);
+        _context.SaveChanges();
         return s;
     }
 
@@ -38,13 +54,12 @@ public class ScannerStorageTests
     [Fact]
     public async Task CreateAsync_PersistsScanner_AndReturnsNewId()
     {
-        using var ctx = CreateContext();
-        var storage = new CreateScannerStorage(ctx);
+        var storage = new CreateScannerStorage(_context);
 
         var id = await storage.CreateAsync("SN-NEW", EScannerStatus.Active, CancellationToken.None);
 
         Assert.NotEqual(Guid.Empty, id);
-        var scanner = ctx.Scanners.Single(s => s.Id == id);
+        var scanner = _context.Scanners.Single(s => s.Id == id);
         Assert.Equal("SN-NEW", scanner.SerialNumber);
         Assert.Equal(EScannerStatus.Active, scanner.Status);
     }
@@ -54,8 +69,7 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
-        using var ctx = CreateContext();
-        var storage = new GetScannerByIdStorage(ctx);
+        var storage = new GetScannerByIdStorage(_context);
 
         var result = await storage.GetByIdAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -65,9 +79,8 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetByIdAsync_ReturnsModel_WhenFound()
     {
-        using var ctx = CreateContext();
-        var scanner = Seed(ctx, "SN-A");
-        var storage = new GetScannerByIdStorage(ctx);
+        var scanner = Seed("SN-A");
+        var storage = new GetScannerByIdStorage(_context);
 
         var result = await storage.GetByIdAsync(scanner.Id, CancellationToken.None);
 
@@ -79,9 +92,8 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetBySerialNumberAsync_ReturnsModel_WhenFound()
     {
-        using var ctx = CreateContext();
-        Seed(ctx, "SN-SERIAL");
-        var storage = new GetScannerByIdStorage(ctx);
+        Seed("SN-SERIAL");
+        var storage = new GetScannerByIdStorage(_context);
 
         var result = await storage.GetBySerialNumberAsync("SN-SERIAL", CancellationToken.None);
 
@@ -92,9 +104,8 @@ public class ScannerStorageTests
     [Fact]
     public async Task IsExistsAsync_ReturnsTrueAndFalse()
     {
-        using var ctx = CreateContext();
-        var scanner = Seed(ctx);
-        var storage = new GetScannerByIdStorage(ctx);
+        var scanner = Seed();
+        var storage = new GetScannerByIdStorage(_context);
 
         Assert.True(await storage.IsExistsAsync(scanner.Id, CancellationToken.None));
         Assert.False(await storage.IsExistsAsync(Guid.NewGuid(), CancellationToken.None));
@@ -105,11 +116,10 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetScannersAsync_ReturnsAll_WhenNoFilter()
     {
-        using var ctx = CreateContext();
-        Seed(ctx, "SN-1", EScannerStatus.Active);
-        Seed(ctx, "SN-2", EScannerStatus.Inactive);
-        Seed(ctx, "SN-3", EScannerStatus.Active);
-        var storage = new GetScannersStorage(ctx);
+        Seed("SN-1", EScannerStatus.Active);
+        Seed("SN-2", EScannerStatus.Inactive);
+        Seed("SN-3", EScannerStatus.Active);
+        var storage = new GetScannersStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, CancellationToken.None);
 
@@ -119,11 +129,10 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetScannersAsync_FiltersByStatus()
     {
-        using var ctx = CreateContext();
-        Seed(ctx, "SN-1", EScannerStatus.Active);
-        Seed(ctx, "SN-2", EScannerStatus.Inactive);
-        Seed(ctx, "SN-3", EScannerStatus.Active);
-        var storage = new GetScannersStorage(ctx);
+        Seed("SN-1", EScannerStatus.Active);
+        Seed("SN-2", EScannerStatus.Inactive);
+        Seed("SN-3", EScannerStatus.Active);
+        var storage = new GetScannersStorage(_context);
 
         var result = await storage.GetAsync(1, 10, EScannerStatus.Active, CancellationToken.None);
 
@@ -134,10 +143,9 @@ public class ScannerStorageTests
     [Fact]
     public async Task GetScannersAsync_PaginatesCorrectly()
     {
-        using var ctx = CreateContext();
         for (int i = 0; i < 5; i++)
-            Seed(ctx, $"SN-{i:D3}");
-        var storage = new GetScannersStorage(ctx);
+            Seed($"SN-{i:D3}");
+        var storage = new GetScannersStorage(_context);
 
         var result = await storage.GetAsync(2, 2, null, CancellationToken.None);
 
@@ -150,13 +158,12 @@ public class ScannerStorageTests
     [Fact]
     public async Task UpdateStatusAsync_ChangesStatus()
     {
-        using var ctx = CreateContext();
-        var scanner = Seed(ctx, "SN-UPD", EScannerStatus.Active);
-        var storage = new UpdateScannerStorage(ctx);
+        var scanner = Seed("SN-UPD", EScannerStatus.Active);
+        var storage = new UpdateScannerStorage(_context);
 
         await storage.UpdateStatusAsync(scanner.Id, EScannerStatus.Inactive, CancellationToken.None);
 
-        var updated = ctx.Scanners.Find(scanner.Id)!;
+        var updated = _context.Scanners.Find(scanner.Id)!;
         Assert.Equal(EScannerStatus.Inactive, updated.Status);
         Assert.NotNull(updated.UpdatedAt);
     }

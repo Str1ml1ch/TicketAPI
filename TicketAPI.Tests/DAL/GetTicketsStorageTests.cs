@@ -1,25 +1,41 @@
 using Microsoft.EntityFrameworkCore;
-using TicketAPI.Domain.Enums;
+using Microsoft.EntityFrameworkCore.Storage;
 using TicketAPI.DAL;
 using TicketAPI.DAL.Entities;
 using TicketAPI.DAL.Storage.GetTickets;
+using TicketAPI.Domain.Enums;
+using TicketAPI.Tests.DAL.Infrastructure;
 
 namespace TicketAPI.Tests.DAL;
 
-public class GetTicketsStorageTests
+[Collection("SqlServer")]
+public class GetTicketsStorageTests : IAsyncLifetime
 {
-    private static TicketDbContext CreateContext()
+    private readonly SqlServerContainerFixture _fixture;
+    private TicketDbContext _context = null!;
+    private IDbContextTransaction _transaction = null!;
+
+    public GetTicketsStorageTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+
+    public async Task InitializeAsync()
     {
-        var options = new DbContextOptionsBuilder<TicketDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        return new TicketDbContext(options);
+        _context = new TicketDbContext(
+            new DbContextOptionsBuilder<TicketDbContext>()
+                .UseSqlServer(_fixture.ConnectionString)
+                .Options);
+        _transaction = await _context.Database.BeginTransactionAsync();
     }
 
-    private static void SeedMany(TicketDbContext ctx, IEnumerable<Ticket> tickets)
+    public async Task DisposeAsync()
     {
-        ctx.Tickets.AddRange(tickets);
-        ctx.SaveChanges();
+        await _transaction.RollbackAsync();
+        await _context.DisposeAsync();
+    }
+
+    private void SeedMany(IEnumerable<Ticket> tickets)
+    {
+        _context.Tickets.AddRange(tickets);
+        _context.SaveChanges();
     }
 
     private static Ticket MakeTicket(
@@ -42,9 +58,8 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_ReturnsAll_WhenNoFilters()
     {
-        using var ctx = CreateContext();
-        SeedMany(ctx, [MakeTicket(), MakeTicket(), MakeTicket()]);
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany([MakeTicket(), MakeTicket(), MakeTicket()]);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, null, null, null, CancellationToken.None);
 
@@ -55,10 +70,9 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_FiltersByEventId()
     {
-        using var ctx = CreateContext();
         var eventId = Guid.NewGuid();
-        SeedMany(ctx, [MakeTicket(eventId: eventId), MakeTicket(eventId: eventId), MakeTicket()]);
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany([MakeTicket(eventId: eventId), MakeTicket(eventId: eventId), MakeTicket()]);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, eventId, null, null, null, CancellationToken.None);
 
@@ -69,10 +83,9 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_FiltersByOrderItemId()
     {
-        using var ctx = CreateContext();
         var orderItemId = Guid.NewGuid();
-        SeedMany(ctx, [MakeTicket(orderItemId: orderItemId), MakeTicket()]);
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany([MakeTicket(orderItemId: orderItemId), MakeTicket()]);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, orderItemId, null, null, CancellationToken.None);
 
@@ -83,10 +96,9 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_FiltersBySeatId()
     {
-        using var ctx = CreateContext();
         var seatId = Guid.NewGuid();
-        SeedMany(ctx, [MakeTicket(seatId: seatId), MakeTicket()]);
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany([MakeTicket(seatId: seatId), MakeTicket()]);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, null, seatId, null, CancellationToken.None);
 
@@ -97,13 +109,12 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_FiltersByStatus()
     {
-        using var ctx = CreateContext();
-        SeedMany(ctx, [
+        SeedMany([
             MakeTicket(status: ETicketStatus.Unused),
             MakeTicket(status: ETicketStatus.Used),
             MakeTicket(status: ETicketStatus.Unused)
         ]);
-        var storage = new GetTicketsStorage(ctx);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, null, null, ETicketStatus.Unused, CancellationToken.None);
 
@@ -114,9 +125,8 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_PaginatesCorrectly()
     {
-        using var ctx = CreateContext();
-        SeedMany(ctx, Enumerable.Range(0, 6).Select(_ => MakeTicket()));
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany(Enumerable.Range(0, 6).Select(_ => MakeTicket()));
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(2, 3, null, null, null, null, CancellationToken.None);
 
@@ -127,9 +137,8 @@ public class GetTicketsStorageTests
     [Fact]
     public async Task GetAsync_ReturnsEmpty_WhenNoMatch()
     {
-        using var ctx = CreateContext();
-        SeedMany(ctx, [MakeTicket(status: ETicketStatus.Unused)]);
-        var storage = new GetTicketsStorage(ctx);
+        SeedMany([MakeTicket(status: ETicketStatus.Unused)]);
+        var storage = new GetTicketsStorage(_context);
 
         var result = await storage.GetAsync(1, 10, null, null, null, ETicketStatus.Cancelled, CancellationToken.None);
 
